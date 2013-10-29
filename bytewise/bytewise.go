@@ -181,6 +181,65 @@ func asciiUpperOrSpace(b byte) (byte, bool) {
 	return b, false
 }
 
+// LevenshteinDistance calculates the magnitude of
+// difference between two strings using the
+// Levenshtein Distance metric, bytewise.
+//
+// This edit distance is the minimum number of single-byte
+// edits (insertions, deletions, or substitutions) needed
+// to transform one string into another.
+//
+// The larger the result, the more different the strings.
+//
+// See: http://en.wikipedia.org/wiki/Levenshtein_distance
+func LevenshteinDistance(a, b string) (int, error) {
+	aLen := len(a)
+	bLen := len(b)
+	if aLen == 0 {
+		return bLen, nil
+	}
+	if bLen == 0 {
+		return aLen, nil
+	}
+	if aLen == bLen && a == b {
+		return 0, nil
+	}
+	rowLen := bLen + 1
+	prevRow := make([]int, rowLen, rowLen)
+	currRow := make([]int, rowLen, rowLen)
+	for h := 0; h < rowLen; h++ {
+		prevRow[h] = h
+	}
+	cost := 0
+	for i := 0; i < aLen; i++ {
+		currRow[0] = i + 1
+		for j := 0; j < bLen; j++ {
+			if a[i] == b[i] {
+				cost = 0
+			} else {
+				cost = 1
+			}
+			currRow[j+1] = min(
+				currRow[j]+1,
+				prevRow[j+1]+1,
+				prevRow[j]+cost)
+		}
+		prevRow, currRow = currRow, prevRow
+	}
+	return prevRow[bLen], nil
+}
+
+func min(a, b, c int) int {
+	m := a
+	if b < m {
+		m = b
+	}
+	if c < m {
+		return c
+	}
+	return m
+}
+
 type byteBigram struct {
 	a, b byte
 }

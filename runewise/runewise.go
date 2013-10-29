@@ -23,8 +23,9 @@ import (
 // HammingDistance calculates the Hamming distance between
 // two strings containing equal numbers of runes.
 //
-// The Hamming distance is the total number of indices
-// at which the corresponding bytes are different.
+// The Hamming distance is the total number of runes
+// that differ at the same index in the resolved array
+// of runes from each string.
 // The higher the result, the more different the strings.
 
 // See: http://en.wikipedia.org/wiki/Hamming_distance
@@ -51,7 +52,6 @@ func HammingDistance(a, b string) (uint, error) {
 //
 // The resulting value is scaled between 0 and 1.0,
 // and a higher value means a higher similarity.
-//
 //
 // This algorithm is also known as the Sorensen Index, and
 // is very close to the White Similarity metric, with the key
@@ -100,7 +100,7 @@ func DiceCoefficient(a, b string) (float64, error) {
 
 // WhiteSimilarity calculates the similarity of two
 // strings through a variation on the Sorensen-Dice
-// Coefficient.
+// Coefficient algorithm.
 //
 // The resulting value is scaled between 0 and 1.0,
 // and a higher value means a higher similarity.
@@ -111,6 +111,9 @@ func DiceCoefficient(a, b string) (float64, error) {
 // frequency.
 //
 // See: http://www.catalysoft.com/articles/strikeamatch.html
+//
+// Returns an error if neither of the input strings
+// contains at least one rune bigram without whitespace.
 func WhiteSimilarity(a, b string) (float64, error) {
 	aPairs, aLen := wordLetterPairs(strings.ToUpper(a))
 	bPairs, bLen := wordLetterPairs(strings.ToUpper(b))
@@ -156,6 +159,66 @@ func wordLetterPairs(s string) ([]runeBigram, int) {
 	}
 	bigrams = bigrams[0:numPairs]
 	return bigrams, numPairs
+}
+
+// LevenshteinDistance calculates the magnitude of
+// difference between two strings using the
+// Levenshtein Distance metric.
+//
+// This edit distance is the minimum number of single-rune
+// edits (insertions, deletions, or substitutions) needed
+// to transform one string into the other.
+//
+// The larger the result, the more different the strings.
+//
+// See: http://en.wikipedia.org/wiki/Levenshtein_distance
+func LevenshteinDistance(a, b string) (int, error) {
+	aRunes, aLen := runeSlice(a)
+	bRunes, bLen := runeSlice(b)
+	if aLen == 0 {
+		return bLen, nil
+	}
+	if bLen == 0 {
+		return aLen, nil
+	}
+	if aLen == bLen && a == b {
+		return 0, nil
+	}
+
+	rowLen := bLen + 1
+	prevRow := make([]int, rowLen, rowLen)
+	currRow := make([]int, rowLen, rowLen)
+	for h := 0; h < rowLen; h++ {
+		prevRow[h] = h
+	}
+	cost := 0
+	for i := 0; i < aLen; i++ {
+		currRow[0] = i + 1
+		for j := 0; j < bLen; j++ {
+			if aRunes[i] == bRunes[j] {
+				cost = 0
+			} else {
+				cost = 1
+			}
+			currRow[j+1] = min(
+				currRow[j]+1,
+				prevRow[j+1]+1,
+				prevRow[j]+cost)
+		}
+		prevRow, currRow = currRow, prevRow
+	}
+	return prevRow[bLen], nil
+}
+
+func min(a, b, c int) int {
+	m := a
+	if b < m {
+		m = b
+	}
+	if c < m {
+		return c
+	}
+	return m
 }
 
 type runeBigram struct {

@@ -150,6 +150,48 @@ func Test_WhiteSimilarity(t *testing.T) {
 	EqualWithin(t, 0.4, c, 0.01)
 }
 
+func Test_LevenshteinDistance_Easy(t *testing.T) {
+	d, err := LevenshteinDistance("test", "test")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, d)
+
+	d, err = LevenshteinDistance("test", "tent")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, d)
+
+	d, err = LevenshteinDistance("gumbo", "gambol")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, d)
+
+	d, err = LevenshteinDistance("kitten", "sitting")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, d)
+
+	d, err = LevenshteinDistance("foo", "")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, d)
+
+	d, err = LevenshteinDistance("", "foo")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, d)
+
+	d, err = LevenshteinDistance("", "")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, d)
+
+	d, err = LevenshteinDistance("a", "")
+	assert.Nil(t, err)
+	assert.Equal(t, 1, d)
+
+}
+
+func Benchmark_LevenshteinDistance(b *testing.B) {
+	for i := 0; i < b.N ; i++ {
+		LevenshteinDistance("kitten", "sitting")
+		LevenshteinDistance("gumbo", "gambol")
+	}
+}
+
 func EqualWithin(t *testing.T, a, b, delta float64, msgAndArgs ...interface{}) bool {
 	if math.Abs(a-b) > delta {
 		return assert.Fail(t, fmt.Sprintf("Not within delta: Abs(%#v - %#v) > %#v", a, b, delta), msgAndArgs...)
