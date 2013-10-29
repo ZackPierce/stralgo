@@ -17,16 +17,22 @@ import (
 //
 // The Hamming distance is the total number of indices
 // at which the corresponding bytes are different.
+// The higher the result, the more different the strings.
+
 // See: http://en.wikipedia.org/wiki/Hamming_distance
 //
 // Returns an error if the string lengths are not equal.
-func HammingDistance(a, b string) (int, error) {
+//
+// Note that this algorithm implementation operates upon
+// individual bytes, and does not account for multibyte
+// unicode runes.
+func HammingDistance(a, b string) (uint, error) {
 	aLen := len(a)
 	bLen := len(b)
 	if aLen != bLen {
 		return 0, errors.New("Hamming distance is undefined between strings of unequal length.")
 	}
-	var d int
+	var d uint
 	for i := 0; i < aLen; i++ {
 		if a[i] != b[i] {
 			d++
@@ -34,33 +40,54 @@ func HammingDistance(a, b string) (int, error) {
 	}
 	return d, nil
 }
-// LeeDistance calculates the Lee distance between
-// two strings of equal length, bytewise.
+
+// DiceCoefficent calculates the simiarlity of two
+// strings per the Sorensen-Dice coefficient, bytewise.
 //
-// See: http://en.wikipedia.org/wiki/Lee_distance
+// The resulting value is scaled between 0 and 1.0,
+// and a higher value means a higher similarity.
 //
-// Returns an error if the string lengths are not equal.
-func LeeDistance(a, b string, q int) (int, error) {
-	if q < 2 {
-		return 0, errors.New("Lee distance must have a q-ary alphabet size greater than or equal to 2.")
+// This algorithm is also known as the Sorensen Index, and
+// is very close to the White Similarity metric, with the key
+// distinctions that DiceCoefficient does not differentiate
+// between whitespace and other characters and also does not
+// account for bigram frequency count differences between
+// the compared strings.
+//
+// See: http://en.wikipedia.org/wiki/Sorensen-Dice_coefficient
+//
+// Note that this algorithm implementation operates upon
+// individual bytes and does not acocunt for multibyte
+// unicode runes.
+func DiceCoefficient(a, b string) (float64, error) {
+	aLimit := len(a) - 1
+	bLimit := len(b) - 1
+	if aLimit < 1 && bLimit < 1 {
+		return 0, errors.New("At least one of the input strings must have a length of 2 or greater for the bigram-based DiceCoefficient to be calculated.")
 	}
-	aLen := len(a)
-	bLen := len(b)
-	if aLen != bLen {
-		return 0, errors.New("Lee distance is undefined between strings of unequal length.")
-	}
-	var d int
-	for i := 0; i < aLen; i++ {
-		var diff int = int(a[i]) - int(b[i])
-		if diff < 0 {
-			diff = -diff
+	aSet := make(map[string]bool, aLimit)
+	totalBigrams := 0.0
+	var bigram string
+	for i := 0; i < aLimit; i++ {
+		bigram = a[i : i+2]
+		if !aSet[bigram] {
+			totalBigrams++
+			aSet[bigram] = true
 		}
-		qDiff := q - diff
-		if diff < qDiff {
-			d += diff
-		} else {
-			d += qDiff
+	}
+
+	bSet := make(map[string]bool, bLimit)
+	sharedBigrams := 0.0
+	for i := 0; i < bLimit; i++ {
+		bigram = b[i : i+2]
+		if !bSet[bigram] {
+			totalBigrams++
+			bSet[bigram] = true
+			if aSet[bigram] {
+				sharedBigrams++
+			}
 		}
 	}
-	return d, nil
+	return 2 * sharedBigrams / totalBigrams, nil
+
 }
