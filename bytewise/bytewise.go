@@ -15,6 +15,7 @@ package bytewise
 
 import (
 	"errors"
+	"unicode"
 )
 
 // HammingDistance calculates the Hamming distance between
@@ -62,7 +63,7 @@ func HammingDistance(a, b string) (uint, error) {
 // See: http://en.wikipedia.org/wiki/Sorensen-Dice_coefficient
 //
 // Note that this algorithm implementation operates upon
-// individual bytes and does not acocunt for multibyte
+// individual bytes and does not account for multibyte
 // unicode runes.
 //
 // Returns an error if both of the input strings
@@ -97,5 +98,89 @@ func DiceCoefficient(a, b string) (float64, error) {
 		}
 	}
 	return 2 * sharedBigrams / totalBigrams, nil
+}
 
+// WhiteSimilarity calculates the similarity of two
+// strings through a variation on the Sorensen-Dice
+// Coefficient algorithm, bytewise.
+//
+// The resulting value is scaled between 0 and 1.0,
+// and a higher value means a higher similarity.
+//
+// WhiteSimilarity differs from DiceCoefficient in that
+// it disregards bigrams that include (single-byte)
+// whitespace, applies an upper-case filter, and
+// accounts for bigram frequency.
+//
+// See: http://www.catalysoft.com/articles/strikeamatch.html
+//
+// Note that this algorithm implementation operates upon
+// individual bytes and does not account for multibyte
+// unicode runes.
+//
+// Returns an error if neither of the input strings
+// contains at least one byte bigram without whitespace.
+func WhiteSimilarity(a, b string) (float64, error) {
+	aPairs, aLen := asciiUpperWordLetterPairs(a)
+	bPairs, bLen := asciiUpperWordLetterPairs(b)
+	union := aLen + bLen
+	if union == 0 {
+		return 0.0, errors.New("At least one of the input strings must contain two or more non-whitespace byte bigrams in order to calculate the White Similarity")
+	}
+	intersection := 0.0
+	for _, aBigram := range aPairs {
+		for j, bBigram := range bPairs {
+			if aBigram == bBigram {
+				intersection++
+				bPairs[j] = byteBigram{}
+				break
+			}
+		}
+	}
+	return 2 * intersection / float64(union), nil
+}
+
+func asciiUpperWordLetterPairs(s string) ([]byteBigram, int) {
+	limit := len(s) - 1
+	if limit < 1 {
+		return make([]byteBigram, 0), 0
+	}
+	bigrams := make([]byteBigram, limit)
+	var a byte
+	var b byte
+	var aIsSpace bool
+	var bIsSpace bool
+	numPairs := 0
+	for i := 0; i < limit; i++ {
+		b, bIsSpace = asciiUpperOrSpace(s[i+1])
+		if bIsSpace {
+			i++
+			continue
+		}
+		a, aIsSpace = asciiUpperOrSpace(s[i])
+		if aIsSpace {
+			continue
+		}
+		bigrams[numPairs] = byteBigram{a: a, b: b}
+		numPairs++
+	}
+	bigrams = bigrams[0:numPairs]
+	return bigrams, numPairs
+}
+
+func asciiUpperOrSpace(b byte) (byte, bool) {
+	if b <= unicode.MaxASCII {
+		if 'a' <= b && b <= 'z' {
+			return b - ('a' - 'A'), false
+		}
+		switch b {
+		case '\t', '\n', '\v', '\f', '\r', ' ', 0x85, 0xA0:
+			return b, true
+		}
+	}
+	return b, false
+}
+
+type byteBigram struct {
+	a, b byte
 }
