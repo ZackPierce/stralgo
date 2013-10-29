@@ -1,12 +1,17 @@
-/*
+﻿/*
 Copyright 2013 Zack Pierce.
 Use of this source code is governed by a MIT-style
 license that can be found in the LICENSE file.
 */
-// Package stralgo implements various string algorithms
-// with an emphasis on similarity metrics.
+/*
+Package stralgo/bytewise implements various string algorithms
+with an emphasis on similarity metrics, implemented in per-byte
+fashion.
 
-package stralgo
+This bytewise approach is suited for speedy comparisons
+when the target strings contain no multi-byte runes.
+*/
+package bytewise
 
 import (
 	"errors"
@@ -59,6 +64,9 @@ func HammingDistance(a, b string) (uint, error) {
 // Note that this algorithm implementation operates upon
 // individual bytes and does not acocunt for multibyte
 // unicode runes.
+//
+// Returns an error if both of the input strings
+// contain less than two bytes.
 func DiceCoefficient(a, b string) (float64, error) {
 	aLimit := len(a) - 1
 	bLimit := len(b) - 1
