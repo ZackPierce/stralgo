@@ -225,7 +225,7 @@ func DamerauLevenshteinDistance(a, b []rune) (int, error) {
 		return aLen, nil
 	}
 
-	// Swap to ensure aRunes contains the shorter slice
+	// Swap to ensure a contains the shorter slice
 	if aLen > bLen {
 		a, aLen, b, bLen = b, bLen, a, aLen
 	}

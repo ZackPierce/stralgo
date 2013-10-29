@@ -202,6 +202,21 @@ func Test_DamerauLevenshteinDistance(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 3, d)
 
+	d, err = DamerauLevenshteinDistance([]rune("ab"), []rune("ab"))
+	assert.Nil(t, err)
+	assert.Equal(t, 0, d)
+
+	d, err = DamerauLevenshteinDistance([]rune(""), []rune("ab"))
+	assert.Nil(t, err)
+	assert.Equal(t, 2, d)
+
+	d, err = DamerauLevenshteinDistance([]rune("ab"), []rune(""))
+	assert.Nil(t, err)
+	assert.Equal(t, 2, d)
+
+	d, err = DamerauLevenshteinDistance([]rune("Cedarinia scabra Sjöstedt 1921"), []rune("Cedarinia scabra Söjstedt 1921"))
+	assert.Nil(t, err)
+	assert.Equal(t, 1, d)
 }
 
 func Benchmark_LevenshteinDistance(b *testing.B) {

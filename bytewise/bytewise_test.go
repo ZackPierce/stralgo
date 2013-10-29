@@ -172,8 +172,43 @@ func Test_LevenshteinDistance_Easy(t *testing.T) {
 
 }
 
+func Test_DamerauLevenshteinDistance(t *testing.T) {
+	d, err := DamerauLevenshteinDistance("azertyuiop", "aeryuop")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, d)
+
+	d, err = DamerauLevenshteinDistance("aeryuop", "azertyuiop")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, d)
+
+	d, err = DamerauLevenshteinDistance("azertyuiopqsdfghjklmwxcvbn", "qwertyuiopasdfghjkl;zxcvbnm")
+	assert.Nil(t, err)
+	assert.Equal(t, 6, d)
+
+	d, err = DamerauLevenshteinDistance("1234567890", "1324576809")
+	assert.Nil(t, err)
+	assert.Equal(t, 3, d)
+
+	d, err = DamerauLevenshteinDistance("ab", "ab")
+	assert.Nil(t, err)
+	assert.Equal(t, 0, d)
+
+	d, err = DamerauLevenshteinDistance("", "ab")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, d)
+
+	d, err = DamerauLevenshteinDistance("ab", "")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, d)
+
+	d, err = DamerauLevenshteinDistance("Cedarinia scabra Sjöstedt 1921", "Cedarinia scabra Söjstedt 1921")
+	assert.Nil(t, err)
+	assert.Equal(t, 2, d, "Note that this requires two edits, despite the fact that only two adjacent runes have been transposed, due to the byte-wise handling approach")
+}
+
+
 func Benchmark_LevenshteinDistance(b *testing.B) {
-	for i := 0; i < b.N ; i++ {
+	for i := 0; i < b.N; i++ {
 		LevenshteinDistance("kitten", "sitting")
 		LevenshteinDistance("gumbo", "gambol")
 	}

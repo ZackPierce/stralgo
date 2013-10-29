@@ -229,6 +229,82 @@ func LevenshteinDistance(a, b string) (int, error) {
 	return prevRow[bLen], nil
 }
 
+// DamerauLevenshteinDistance calculates the magnitude
+// of difference between two strings using the Damerau-
+// Levenshtein algorithm with adjacent-only transpositions,
+// bytewise.
+//
+// This edit distance is the minimum number of single-byte
+// edits (insertions, deletions, substitutions, or
+// transpositions) to transform one string into the other.
+// DamerauLevenshtein differs from Levenshtein primarily
+// in that DamerauLevenshtein considers adjacent-byte transpositions.
+//
+// The larger the result, the more different the strings.
+//
+// See: http://en.wikipedia.org/wiki/Damerau-Levenshtein_distance
+func DamerauLevenshteinDistance(a, b string) (int, error) {
+	aLen := len(a)
+	bLen := len(b)
+	if aLen == 0 {
+		return bLen, nil
+	} else if bLen == 0 {
+		return aLen, nil
+	}
+
+	// Swap to ensure a contains the shorter string
+	if aLen > bLen {
+		a, aLen, b, bLen = b, bLen, a, aLen
+	}
+	rowLen := aLen + 1
+	tranRow := make([]int, rowLen, rowLen)
+	prevRow := make([]int, rowLen, rowLen)
+	currRow := make([]int, rowLen, rowLen)
+	for h := 0; h < rowLen; h++ {
+		prevRow[h] = h
+	}
+	var prevB byte
+	var cost int
+	for i := 1; i <= bLen; i++ {
+		currB := b[i-1]
+		currRow[0] = i
+
+		start := i - bLen - 1
+		if start < 1 {
+			start = 1
+		}
+		end := i + bLen + 1
+		if end > aLen {
+			end = aLen
+		}
+
+		var prevA byte
+		for j := start; j <= end; j++ {
+			currA := a[j-1]
+			if currA == currB {
+				cost = 0
+			} else {
+				cost = 1
+			}
+			entry := min(
+				currRow[j-1]+1,
+				prevRow[j]+1,
+				prevRow[j-1]+cost)
+			if currA == prevB && currB == prevA {
+				trans := tranRow[j-2] + cost
+				if trans < entry {
+					entry = trans
+				}
+			}
+			currRow[j] = entry
+			prevA = currA
+		}
+		prevB = currB
+		tranRow, prevRow, currRow = prevRow, currRow, tranRow
+	}
+	return prevRow[aLen], nil
+}
+
 func min(a, b, c int) int {
 	m := a
 	if b < m {
