@@ -13,6 +13,7 @@ package runewise
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"unicode"
 )
 
@@ -56,7 +57,7 @@ func HammingDistance(a, b []rune) (uint, error) {
 // account for bigram frequency count differences between
 // the compared strings.
 //
-// See: http://en.wikipedia.org/wiki/Sorensen-Dice_coefficient
+// See: http://en.wikipedia.org/wiki/Dice_coefficient
 //
 // Returns an error if both of the input strings contain
 // less than two runes.
@@ -276,6 +277,92 @@ func DamerauLevenshteinDistance(a, b []rune) (int, error) {
 		tranRow, prevRow, currRow = prevRow, currRow, tranRow
 	}
 	return prevRow[aLen], nil
+}
+
+// JaroSimilarity calculates the similarity between two strings
+// using the original Jaro distance formula.
+//
+// The result is between 0 and 1.0, and the higher the score,
+// the more similar the two strings are. 1.0 is a perfect match.
+//
+// If either input argument is empty ([]rune("")) or nil, the result
+// will be 0.0. This is due to a quirk in the formal definition of
+// the algorithm which counts the number of matching characters.
+// In the empty or nil cases, no matches may be found at all.
+//
+// See (the first half of) : http://en.wikipedia.org/wiki/Jaro-Winkler_distance
+// See also : http://alias-i.com/lingpipe/docs/api/com/aliasi/spell/JaroWinklerDistance.html
+func JaroSimilarity(a, b []rune) float64 {
+	matches, transpositions := jaroMatchesAndHalfTranspositions(a, b)
+
+	if matches == 0 {
+		return 0.0
+	}
+
+	matchFloat := float64(matches)
+	return (1.0 / 3.0) * (matchFloat/float64(len(a)) + matchFloat/float64(len(b)) + (matchFloat-float64(transpositions/2))/matchFloat)
+}
+
+// jaroMatchesAndHalfTranspositions calculates the number of
+// matches and half-transpositions defined by the Jaro distance
+// formula.
+func jaroMatchesAndHalfTranspositions(a, b []rune) (int, int) {
+	aLen := len(a)
+	bLen := len(b)
+	if aLen == 0 || bLen == 0 {
+		return 0, 0
+	}
+	if aLen < bLen {
+		a, aLen, b, bLen = b, bLen, a, aLen
+	}
+	matchMax := (aLen / 2) - 1
+	if matchMax < 0 {
+		matchMax = 0
+	}
+	aCommon := make([]rune, aLen, aLen)
+	numAMatched := 0
+	bMatchedIndices := make(map[int]bool, aLen)
+	for i, aRune := range a {
+		from := i - matchMax
+		if from < 0 {
+			from = 0
+		}
+		to := i + matchMax
+		if to >= bLen {
+			to = bLen - 1
+		}
+		aMatched := false
+		for j := from; j <= to; j++ {
+			bRune := b[j]
+			if aRune != bRune {
+				continue
+			}
+			if !aMatched {
+				aCommon[numAMatched] = aRune
+				aMatched = true
+				numAMatched++
+			}
+			if _, ok := bMatchedIndices[j]; !ok {
+				bMatchedIndices[j] = true
+			}
+		}
+	}
+
+	bIndices := make([]int, numAMatched, numAMatched)
+	c := 0
+	for s, _ := range bMatchedIndices {
+		bIndices[c] = s
+		c++
+	}
+	sort.Ints(bIndices)
+
+	transCount := 0
+	for k := 0; k < numAMatched; k++ {
+		if aCommon[k] != b[bIndices[k]] {
+			transCount++
+		}
+	}
+	return numAMatched, transCount
 }
 
 func min(a, b, c int) int {

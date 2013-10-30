@@ -206,7 +206,6 @@ func Test_DamerauLevenshteinDistance(t *testing.T) {
 	assert.Equal(t, 2, d, "Note that this requires two edits, despite the fact that only two adjacent runes have been transposed, due to the byte-wise handling approach")
 }
 
-
 func Benchmark_LevenshteinDistance(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		LevenshteinDistance("kitten", "sitting")

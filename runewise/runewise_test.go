@@ -219,6 +219,54 @@ func Test_DamerauLevenshteinDistance(t *testing.T) {
 	assert.Equal(t, 1, d)
 }
 
+func Test_Jaro_Empty(t *testing.T) {
+	c := JaroSimilarity([]rune(""), []rune(""))
+	assert.Equal(t, 0.0, c, "Empty strings should produce 0.0 for Jaro")
+	c = JaroSimilarity([]rune(""), []rune("a"))
+	assert.Equal(t, 0.0, c, "First empty string should produce 0.0 for Jaro")
+	c = JaroSimilarity([]rune("b"), []rune(""))
+	assert.Equal(t, 0.0, c, "Second empty string should produce 0.0 for Jaro")
+	c = JaroSimilarity(nil, nil)
+	assert.Equal(t, 0.0, c, "Nil strings should produce 0.0 for Jaro")
+	c = JaroSimilarity(nil, []rune("a"))
+	assert.Equal(t, 0.0, c, "First nil should produce 0.0 for Jaro")
+	c = JaroSimilarity([]rune("a"), nil)
+	assert.Equal(t, 0.0, c, "Second nil should produce 0.0 for Jaro")
+}
+
+func Test_Jaro_SimpleEquality(t *testing.T) {
+	c := JaroSimilarity([]rune("a"), []rune("a"))
+	assert.Equal(t, 1.0, c, "Equal strings should produce 1.0 for Jaro")
+
+	c = JaroSimilarity([]rune("abc"), []rune("abc"))
+	assert.Equal(t, 1.0, c, "Equal strings should produce 1.0 for Jaro")
+
+	c = JaroSimilarity([]rune("abc"), []rune("123"))
+	assert.Equal(t, 0.0, c, "Completely different strings should produce 0.0 for Jaro")
+}
+
+func Test_Jaro_Unequal(t *testing.T) {
+	c := JaroSimilarity([]rune("abcvwxyz"), []rune("cabvwxyz"))
+	EqualWithin(t, 0.958, c, 0.001)
+
+	c = JaroSimilarity([]rune("abcduvwxyz"), []rune("dabcuvwxyz"))
+	EqualWithin(t, (1.0/3.0)*(2.0 + (10.0 - 2.0)/10.0), c, 0.0001)
+
+	c = JaroSimilarity([]rune("abcduvwxyz"), []rune("dbacuvwxyz"))
+	EqualWithin(t, (1.0/3.0)*(2.0 + (10.0 - 1.0)/10.0), c, 0.0001)
+
+	c = JaroSimilarity([]rune("martha"), []rune("marhta"))
+	EqualWithin(t, 0.9444444, c, 0.0001, "martha and marhta")
+
+	c = JaroSimilarity([]rune("dwayne"), []rune("duane"))
+	EqualWithin(t, 0.8222222, c, 0.0001, "dwayne and duane")
+
+	c = JaroSimilarity([]rune("dixon"), []rune("dicksonx"))
+	EqualWithin(t, 0.7666666, c, 0.0001)
+
+
+}
+
 func Benchmark_LevenshteinDistance(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		LevenshteinDistance([]rune("kitten"), []rune("sitting"))
