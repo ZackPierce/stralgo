@@ -250,10 +250,10 @@ func Test_Jaro_Unequal(t *testing.T) {
 	EqualWithin(t, 0.958, c, 0.001)
 
 	c = JaroSimilarity([]rune("abcduvwxyz"), []rune("dabcuvwxyz"))
-	EqualWithin(t, (1.0/3.0)*(2.0 + (10.0 - 2.0)/10.0), c, 0.0001)
+	EqualWithin(t, (1.0/3.0)*(2.0+(10.0-2.0)/10.0), c, 0.0001)
 
 	c = JaroSimilarity([]rune("abcduvwxyz"), []rune("dbacuvwxyz"))
-	EqualWithin(t, (1.0/3.0)*(2.0 + (10.0 - 1.0)/10.0), c, 0.0001)
+	EqualWithin(t, (1.0/3.0)*(2.0+(10.0-1.0)/10.0), c, 0.0001)
 
 	c = JaroSimilarity([]rune("martha"), []rune("marhta"))
 	EqualWithin(t, 0.9444444, c, 0.0001, "martha and marhta")
@@ -264,7 +264,54 @@ func Test_Jaro_Unequal(t *testing.T) {
 	c = JaroSimilarity([]rune("dixon"), []rune("dicksonx"))
 	EqualWithin(t, 0.7666666, c, 0.0001)
 
+	c = JaroSimilarity([]rune("abcd"), []rune("qrsd"))
+	EqualWithin(t, (1.0/3.0)*(1.0/4.0+1.0/4.0+1.0/1.0), c, 0.0001)
+}
 
+func Test_JaroWinkler_Empty(t *testing.T) {
+	c := JaroWinklerSimilarity([]rune(""), []rune(""))
+	assert.Equal(t, 0.0, c, "Empty strings should produce 0.0 for JaroWinkler")
+	c = JaroWinklerSimilarity([]rune(""), []rune("a"))
+	assert.Equal(t, 0.0, c, "First empty string should produce 0.0 for JaroWinkler")
+	c = JaroWinklerSimilarity([]rune("b"), []rune(""))
+	assert.Equal(t, 0.0, c, "Second empty string should produce 0.0 for JaroWinkler")
+	c = JaroWinklerSimilarity(nil, nil)
+	assert.Equal(t, 0.0, c, "Nil strings should produce 0.0 for JaroWinkler")
+	c = JaroWinklerSimilarity(nil, []rune("a"))
+	assert.Equal(t, 0.0, c, "First nil should produce 0.0 for JaroWinkler")
+	c = JaroWinklerSimilarity([]rune("a"), nil)
+	assert.Equal(t, 0.0, c, "Second nil should produce 0.0 for JaroWinkler")
+}
+
+func Test_JaroWinkler_SimpleEquality(t *testing.T) {
+	c := JaroWinklerSimilarity([]rune("a"), []rune("a"))
+	assert.Equal(t, 1.0, c, "Equal strings should produce 1.0 for JaroWinkler")
+
+	c = JaroWinklerSimilarity([]rune("abc"), []rune("abc"))
+	assert.Equal(t, 1.0, c, "Equal strings should produce 1.0 for JaroWinkler")
+
+	c = JaroWinklerSimilarity([]rune("abc"), []rune("123"))
+	assert.Equal(t, 0.0, c, "Completely different strings should produce 0.0 for JaroWinkler")
+}
+
+func Test_JaroWinkler_Unequal(t *testing.T) {
+	c := JaroWinklerSimilarity([]rune("abcduvwxyz"), []rune("dabcuvwxyz"))
+	EqualWithin(t, (1.0/3.0)*(2.0+(10.0-2.0)/10.0)+0.0, c, 0.0001)
+
+	c = JaroWinklerSimilarity([]rune("abcduvwxyz"), []rune("dbacuvwxyz"))
+	EqualWithin(t, (1.0/3.0)*(2.0+(10.0-1.0)/10.0)+0.0, c, 0.0001)
+
+	c = JaroWinklerSimilarity([]rune("martha"), []rune("marhta"))
+	EqualWithin(t, 0.9444444+(0.1*3*(1-0.944444)), c, 0.0001, "martha and marhta")
+
+	c = JaroWinklerSimilarity([]rune("dwayne"), []rune("duane"))
+	EqualWithin(t, 0.8222222+(0.1*1*(1-0.822222)), c, 0.0001, "dwayne and duane")
+
+	c = JaroWinklerSimilarity([]rune("dixon"), []rune("dicksonx"))
+	EqualWithin(t, 0.7666666+(0.1*2*(1-0.7666666)), c, 0.0001)
+
+	c = JaroWinklerSimilarity([]rune("abcd"), []rune("qrsd"))
+	EqualWithin(t, (1.0/3.0)*(1.0/4.0+1.0/4.0+1.0/1.0)+0.0, c, 0.0001)
 }
 
 func Benchmark_LevenshteinDistance(b *testing.B) {

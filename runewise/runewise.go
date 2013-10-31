@@ -17,6 +17,12 @@ import (
 	"unicode"
 )
 
+const (
+	WinklerBoostThreshold  = 0.7 // JaroWinklerSimilarity suggested parameter. If the JaroSimilarity for the compared strings is above this value, add an additional boost factor based on the shared prefix length and prefix scale.
+	WinklerMaxPrefixLength = 4   // JaroWinklerSimilarity suggested parameter. Used to control the maximum size of identical prefixes used in the prefix boost factor.
+	WinklerPrefixScale     = 0.1 // JaroWinklerSimilarity suggested parameter. Used to control the scale of bonus added for a pair having a JaroSimilarity above the threshold and with shared string prefixes.
+)
+
 // HammingDistance calculates the Hamming distance between
 // two strings containing equal numbers of runes.
 //
@@ -291,6 +297,7 @@ func DamerauLevenshteinDistance(a, b []rune) (int, error) {
 // In the empty or nil cases, no matches may be found at all.
 //
 // See (the first half of) : http://en.wikipedia.org/wiki/Jaro-Winkler_distance
+//
 // See also : http://alias-i.com/lingpipe/docs/api/com/aliasi/spell/JaroWinklerDistance.html
 func JaroSimilarity(a, b []rune) float64 {
 	matches, transpositions := jaroMatchesAndHalfTranspositions(a, b)
@@ -333,8 +340,7 @@ func jaroMatchesAndHalfTranspositions(a, b []rune) (int, int) {
 		}
 		aMatched := false
 		for j := from; j <= to; j++ {
-			bRune := b[j]
-			if aRune != bRune {
+			if aRune != b[j] {
 				continue
 			}
 			if !aMatched {
@@ -363,6 +369,95 @@ func jaroMatchesAndHalfTranspositions(a, b []rune) (int, int) {
 		}
 	}
 	return numAMatched, transCount
+}
+
+// JaroWinklerSimilarity calculates the similarity between
+// two input strings using the Jaro-Winkler distance formula.
+//
+// Winkler's suggested constants for max considered common prefix
+// length (4), common prefix scaling factor (0.1), and boost
+// threshold (0.7) are used.
+//
+// The result is between 0 and 1.0, and the higher the score,
+// the more similar the two strings are. 1.0 is a perfect match.
+//
+// If either input argument is empty ([]rune("")) or nil, the result
+// will be 0.0. This is due to a quirk in the formal definition of
+// the algorithm which counts the number of matching characters.
+// In the empty or nil cases, no matches may be found at all.
+//
+// See : http://en.wikipedia.org/wiki/Jaro-Winkler_distance
+//
+// See : http://alias-i.com/lingpipe/docs/api/com/aliasi/spell/JaroWinklerDistance.html
+//
+// Note that the wikipedia article does not include a description
+// of Winkler's boost threshold, an explanation of which can be
+// found in the lingpipe documentation (linked above), and is
+// demonstrated in Winkler's original code.
+//
+// In short, the boost threshold has the following effect:
+//
+//    if calculatedJaroSimilarity < WinklerBoostThreshold {
+//    	return calculatedJaroSimilarity
+//    } else {
+//    	return calculatedJaroSimilarity + prefixSimilarityBonus
+//    }
+//
+// The prefixSimilarityBonus is the modification to the original
+// Jaro formula described on the Wikipedia article, and is equivalent to:
+//
+//    Min(calculatedLengthOfCommonPrefix, WinklerMaxPrefixLength)*WinklerPrefixScale*(1 - calculatedJaroSimilarity)
+func JaroWinklerSimilarity(a, b []rune) float64 {
+	return JaroWinklerSimilarityParametric(a, b, WinklerPrefixScale, WinklerMaxPrefixLength, WinklerBoostThreshold)
+}
+
+// JaroWinklerSimilarityParametric calculates similarity between
+// two input strings using the Jaro-Winkler distance formula.
+//
+// The product of prefixScale and maxPrefixLength should be between 0.0 and 1.0.
+// Assuming this is true, the result will be between 0 and 1.0.
+//
+// The higher the score, the more similar the two strings are.
+// 1.0 is a perfect match.
+//
+// See : http://en.wikipedia.org/wiki/Jaro-Winkler_distance
+//
+// See : http://alias-i.com/lingpipe/docs/api/com/aliasi/spell/JaroWinklerDistance.html
+//
+// Note that the wikipedia article does not include a description
+// of Winkler's boost threshold, an explanation of which can be
+// found in the lingpipe documentation (linked above), and is
+// demonstrated in Winkler's original code.
+//
+// In short, the boost threshold has the following effect:
+//
+//    if calculatedJaroSimilarity < boostThreshold {
+//    	return calculatedJaroSimilarity
+//    } else {
+//    	return calculatedJaroSimilarity + prefixSimilarityBonus
+//    }
+//
+// The prefixSimilarityBonus is the modification to the original
+// Jaro formula described on the Wikipedia article, and is equivalent to:
+//
+//    Min(calculatedLengthOfCommonPrefix, maxPrefixLength)*prefixScale*(1 - calculatedJaroSimilarity)/
+func JaroWinklerSimilarityParametric(a, b []rune, prefixScale float64, maxPrefixLength int, boostThreshold float64) float64 {
+	j := JaroSimilarity(a, b)
+	if j < boostThreshold {
+		return j
+	}
+	return j + float64(clampedSharedPrefixLength(a, b, maxPrefixLength))*prefixScale*(1.0-j)
+}
+
+func clampedSharedPrefixLength(a, b []rune, maxPrefixLength int) int {
+	minLen := min(len(a), len(b), maxPrefixLength)
+	i := 0
+	for ; i < minLen; i++ {
+		if a[i] != b[i] {
+			return i
+		}
+	}
+	return i
 }
 
 func min(a, b, c int) int {
